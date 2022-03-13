@@ -2,7 +2,7 @@ import { app, BrowserWindow, shell } from 'electron'
 import { release } from 'os'
 import { join } from 'path'
 import pkg from '../../package.json'
-import renderer from './renderer'
+import puppeteer from './puppeteer/index'
 
 // 应用是否取得锁，取锁失败则退出，单开模式
 // if (!app.requestSingleInstanceLock()) {
@@ -57,8 +57,8 @@ async function createWindow () {
 // 主进程准备完毕再加载窗口
 app.whenReady().then(createWindow)
 
-// 监听渲染进程消息
-renderer()
+// puppeteer 无头浏览器
+puppeteer()
 
 // 窗口关闭时退出主进程
 app.on('window-all-closed', () => {

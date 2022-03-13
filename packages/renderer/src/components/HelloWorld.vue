@@ -5,7 +5,7 @@
 
 async function send (): Promise<void> {
 // 打开软件
-    const ret = await window.ipcRenderer.invoke('nightmare')
+    const ret = await window.ipcRenderer.invoke('puppeteer')
     console.log(ret)
 }
 
@@ -21,7 +21,7 @@ defineProps<{ msg: string }>()
         type="button"
         @click="send"
     >
-        打开网易云
+        打开网站
     </button>
 </template>
 
