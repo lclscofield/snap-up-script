@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, Menu, shell } from 'electron'
 import { release } from 'os'
 import { join } from 'path'
 import pkg from '../../package.json'
@@ -16,17 +16,18 @@ if (release().startsWith('6.1')) app.disableHardwareAcceleration()
 // 为 win10+ 的通知设置应用程序名称
 if (process.platform === 'win32') app.setAppUserModelId(app.getName())
 
-let win: BrowserWindow | null = null
+// 生产环境禁用菜单
+if (process.env.NODE_ENV === 'production') Menu.setApplicationMenu(null)
 
+let win: BrowserWindow | null = null
 // 创建应用窗口
 async function createWindow () {
     win = new BrowserWindow({
         title: 'Main window',
-        width: 1600,
-        height: 1000,
+        width: 800,
+        height: 600,
         webPreferences: {
             preload: join(__dirname, '../preload/index.cjs'),
-            nativeWindowOpen: true,
         },
     })
 
