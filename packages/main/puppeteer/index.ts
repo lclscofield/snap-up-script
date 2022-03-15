@@ -16,18 +16,18 @@ const defaultConfig = {
 puppeteer.use(StealthPlugin())
 
 // 浏览器列表
-let browserList: { browser: Browser; browserWSEndpoint: string }[] = []
+const browserList: { browser: Browser; browserWSEndpoint: string }[] = []
 
 export default () => {
     // 上传账号文件
-    ipcMain.handle('upload', async () => {
+    ipcMain.handle('upload', async (): Promise<string[][] | null> => {
         const files = dialog.showOpenDialogSync({
             filters: [{
                 name: 'TXT',
                 extensions: ['txt'],
             }],
         })
-        if (!files || files[0]) return null
+        if (!files || !files[0]) return null
 
         // 逐行读取 txt 文件
         const rl = readline.createInterface({
@@ -36,32 +36,49 @@ export default () => {
             terminal: false,
         })
         const lines = []
-        rl.on('line', (line) => {
-            console.log(line)
+        // 同步方式，读取每一行的内容
+        for await (const line of rl) {
             lines.push(line.split(','))
-        })
+        }
+        return lines
     })
-    ipcMain.handle('openBrowser', async () => {
-        for (let i = 0; i < 1; i++) {
-            const browser = await puppeteer.launch({
-                ...defaultConfig,
-            })
-            // 浏览器 ws 地址
-            const browserWSEndpoint = browser.wsEndpoint()
-            // 监听浏览器断开连接
-            // browser.on('disconnected', () => {})
-            const page = await browser.newPage()
-            await page.goto('https://bot.sannysoft.com/')
-            browserList.push({
-                browser,
-                browserWSEndpoint,
-            })
+    // 打开浏览器
+    ipcMain.handle('openBrowser', async (event, num = 1): Promise<unknown> => {
+        try {
+            for (let i = 0; i < num; i++) {
+                // 打开浏览器
+                const browser = await puppeteer.launch({
+                    ...defaultConfig,
+                })
+                // 浏览器 ws 地址
+                const browserWSEndpoint = browser.wsEndpoint()
+
+                // 保存浏览器实例
+                browserList.push({
+                    browser,
+                    browserWSEndpoint,
+                })
+                // 监听浏览器断开连接
+                // browser.on('disconnected', () => {})
+                // 打开页面
+                const page = await browser.newPage()
+                await page.goto('https://bot.sannysoft.com/')
+            }
+        } catch (error) {
+            return error
         }
     })
-    ipcMain.handle('closeBrowser', async () => {
-        browserList.forEach(browserObj => {
-            browserObj.browser.close()
-        })
-        browserList = []
+    // 关闭浏览器
+    ipcMain.handle('closeBrowser', async (event, index = -1): Promise<void> => {
+        // -1 关闭所有浏览器
+        if (index === -1) {
+            browserList.forEach(browserObj => {
+                browserObj.browser.close()
+            })
+            browserList.splice(0, browserList.length)
+        } else if (index >= 0) {
+            browserList[index].browser.close()
+            browserList.splice(index, 1)
+        }
     })
 }
