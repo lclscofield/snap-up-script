@@ -1,7 +1,4 @@
-import { dialog, ipcMain } from 'electron'
-import readline from 'readline'
-import fs from 'fs'
-import { Browser } from 'puppeteer'
+import { ipcMain } from 'electron'
 // import puppeteer from 'puppeteer'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
@@ -15,70 +12,81 @@ const defaultConfig = {
 // 使用隐藏插件
 puppeteer.use(StealthPlugin())
 
-// 浏览器列表
-const browserList: { browser: Browser; browserWSEndpoint: string }[] = []
+interface IUser {
+    username: string,
+    password: string
+}
+
+// 等待函数
+function delay (time: number): Promise<unknown> {
+    return new Promise(function (resolve) {
+        setTimeout(resolve, time)
+    })
+}
 
 export default () => {
-    // 上传账号文件
-    ipcMain.handle('upload', async (): Promise<string[][] | null> => {
-        const files = dialog.showOpenDialogSync({
-            filters: [{
-                name: 'TXT',
-                extensions: ['txt'],
-            }],
-        })
-        if (!files || !files[0]) return null
-
-        // 逐行读取 txt 文件
-        const rl = readline.createInterface({
-            input: fs.createReadStream(files[0]),
-            output: process.stdout,
-            terminal: false,
-        })
-        const lines = []
-        // 同步方式，读取每一行的内容
-        for await (const line of rl) {
-            lines.push(line.split(','))
-        }
-        return lines
-    })
     // 打开浏览器
-    ipcMain.handle('openBrowser', async (event, num = 1): Promise<unknown> => {
+    ipcMain.handle('openBrowser', async (event, user: string): Promise<unknown> => {
         try {
-            for (let i = 0; i < num; i++) {
-                // 打开浏览器
-                const browser = await puppeteer.launch({
-                    ...defaultConfig,
-                })
-                // 浏览器 ws 地址
-                const browserWSEndpoint = browser.wsEndpoint()
+            console.log(user)
+            // 打开浏览器
+            const browser = await puppeteer.launch({
+                ...defaultConfig,
+            })
+            // 创建页面
+            const page = await browser.newPage()
 
-                // 保存浏览器实例
-                browserList.push({
-                    browser,
-                    browserWSEndpoint,
-                })
-                // 监听浏览器断开连接
-                // browser.on('disconnected', () => {})
-                // 打开页面
-                const page = await browser.newPage()
-                await page.goto('https://bot.sannysoft.com/')
-            }
+            // 拦截请求
+            await page.setRequestInterception(true)
+
+            const userObj: IUser = JSON.parse(user)
+            page.on('request', interceptedRequest => {
+                // 拦截登录请求，写入登录数据
+                if (interceptedRequest.url().endsWith('checkLogin')) {
+                    interceptedRequest.continue({
+                        postData: `loginName=${userObj.username}&loginPwd=${userObj.password}`,
+                    })
+                }
+                interceptedRequest.continue()
+            })
+            // 进入页面
+            await page.goto('https://www.jiaoxingji.com/h5/#/')
+
+            // 点击登录后跳转页面
+            await Promise.all([
+                page.waitForNavigation(),
+                page.evaluate(b => {
+                    b.click()
+                }, await page.$('uni-button')),
+            ])
+
+            // 点击导航 “竞抢”
+            await Promise.all([
+                page.waitForNavigation(),
+                page.evaluate(b => {
+                    b.click()
+                }, await page.$('.uni-tabbar div:nth-child(3)')),
+            ])
+
+            // 等待 3s 开始循环点击抢购
+            await delay(3000)
+
+            // 循环点击抢购按钮
+            let n = 0
+            const timer = setInterval(async () => {
+                n++
+                try {
+                    await page.evaluate((b, n) => {
+                        console.log(`点击第${n}次`)
+                        b.click()
+                    }, await page.$('.Grab'), n)
+                } catch (error) {
+                    console.log(error)
+                    clearInterval(timer)
+                }
+            }, 10)
         } catch (error) {
             return error
-        }
-    })
-    // 关闭浏览器
-    ipcMain.handle('closeBrowser', async (event, index = -1): Promise<void> => {
-        // -1 关闭所有浏览器
-        if (index === -1) {
-            browserList.forEach(browserObj => {
-                browserObj.browser.close()
-            })
-            browserList.splice(0, browserList.length)
-        } else if (index >= 0) {
-            browserList[index].browser.close()
-            browserList.splice(index, 1)
         }
     })
 }

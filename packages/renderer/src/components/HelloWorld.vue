@@ -1,17 +1,14 @@
 <script setup lang="ts">
-// import { ref } from 'vue'
-// import { useStore } from '../store/index'
+import { ref } from 'vue'
 
-async function upload (): Promise<void> {
-    const ret = await window.ipcRenderer.invoke('upload')
-    console.log(ret)
-}
+const username = ref('Jiacheng111')
+const password = ref('123456')
+
 async function openBrowser (): Promise<void> {
-    const ret = await window.ipcRenderer.invoke('openBrowser')
-    console.log(ret)
-}
-async function closeBrowser (): Promise<void> {
-    const ret = await window.ipcRenderer.invoke('closeBrowser')
+    const ret = await window.ipcRenderer.invoke('openBrowser', JSON.stringify({
+        username: username.value,
+        password: password.value,
+    }))
     console.log(ret)
 }
 
@@ -23,25 +20,32 @@ defineProps<{ msg: string }>()
 </script>
 
 <template>
-    <button
-        type="button"
-        @click="upload"
-    >
-        upload
-    </button>
-    <button
-        type="button"
-        @click="openBrowser"
-    >
-        open
-    </button>
-    <button
-        type="button"
-        @click="closeBrowser"
-    >
-        close
-    </button>
+    <div class="wrap">
+        <input
+            v-model="username"
+            type="text"
+        >
+        <input
+            v-model="password"
+            type="password"
+        >
+        <button
+            type="button"
+            @click="openBrowser"
+        >
+            open
+        </button>
+    </div>
 </template>
 
 <style lang="scss" scoped>
+.wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    input, button {
+        margin-top: 20px;
+    }
+}
 </style>
