@@ -1,46 +1,24 @@
 <script setup lang="ts">
-// import { ref } from 'vue'
-// import { useStore } from '../store/index'
+import { ref } from 'vue'
 
-async function upload (): Promise<void> {
-    const ret = await window.ipcRenderer.invoke('upload')
-    console.log(ret)
+const key = ref('')
+async function createMainWallet (): Promise<void> {
+    const ret = await window.ipcRenderer.invoke('createMainWallet')
+    console.log('助记词', ret)
+    key.value = ret
 }
-async function openBrowser (): Promise<void> {
-    const ret = await window.ipcRenderer.invoke('openBrowser')
-    console.log(ret)
-}
-async function closeBrowser (): Promise<void> {
-    const ret = await window.ipcRenderer.invoke('closeBrowser')
-    console.log(ret)
-}
-
-defineProps<{ msg: string }>()
-
-// const c = ref(0)
-// const store = useStore()
-// console.log(c.value, store.count)
 </script>
 
 <template>
-    <button
-        type="button"
-        @click="upload"
-    >
-        upload
-    </button>
-    <button
-        type="button"
-        @click="openBrowser"
-    >
-        open
-    </button>
-    <button
-        type="button"
-        @click="closeBrowser"
-    >
-        close
-    </button>
+    <div class="wrap">
+        <button
+            type="button"
+            @click="createMainWallet"
+        >
+            创建主钱包
+        </button>
+        <div>助记词: {{ key }}</div>
+    </div>
 </template>
 
 <style lang="scss" scoped>
